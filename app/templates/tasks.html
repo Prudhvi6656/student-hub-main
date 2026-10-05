@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h4>Tasks</h4>
+<form method="post" class="row g-2 my-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="col-md-4"><input class="form-control" name="title" placeholder="Assignment / exam prep..." required></div>
+  <div class="col-md-3"><select class="form-select" name="course_id">
+    <option value="">No course</option>
+    {% for c in courses %}<option value="{{ c.id }}">{{ c.code }}</option>{% endfor %}</select></div>
+  <div class="col-md-2"><input class="form-control" type="date" name="due_date" required></div>
+  <div class="col-md-2"><select class="form-select" name="priority">
+    <option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></div>
+  <div class="col-md-1"><button class="btn btn-primary w-100">Add</button></div>
+</form>
+
+<div class="btn-group mb-3">
+  {% for f in ['pending', 'done', 'all'] %}
+  <a class="btn btn-outline-primary {{ 'active' if flt == f }}" href="{{ url_for('main.tasks', filter=f) }}">{{ f|capitalize }}</a>
+  {% endfor %}
+</div>
+
+<ul class="list-group shadow-sm">
+  {% for t in tasks %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    <div>
+      <span class="{{ 'text-decoration-line-through text-muted' if t.done }}">{{ t.title }}</span>
+      {% if t.course %}<span class="badge bg-info text-dark">{{ t.course.code }}</span>{% endif %}
+      <span class="badge bg-{{ {'high': 'danger', 'medium': 'warning', 'low': 'success'}[t.priority] }}">{{ t.priority }}</span>
+      <small class="{{ 'text-danger' if not t.done and t.due_date < today else 'text-muted' }}">due {{ t.due_date }}</small>
+    </div>
+    <div class="d-flex gap-1">
+      <form method="post" action="{{ url_for('main.toggle_task', task_id=t.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-success">{{ 'Undo' if t.done else 'Done' }}</button></form>
+      <form method="post" action="{{ url_for('main.delete_task', task_id=t.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-outline-danger">x</button></form>
+    </div>
+  </li>
+  {% else %}<li class="list-group-item text-muted">No tasks here.</li>{% endfor %}
+</ul>
+{% endblock %}

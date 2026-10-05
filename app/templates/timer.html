@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Focus Timer - StudyHub{% endblock %}
+{% block content %}
+<h4 class="mb-3"><i class="bi bi-stopwatch"></i> Focus Timer</h4>
+<div class="card mx-auto" style="max-width:460px"><div class="card-body text-center p-4">
+  <div class="btn-group w-100 mb-4" id="modes">
+    <button class="btn btn-outline-primary active" data-min="25" data-focus="1">Focus 25</button>
+    <button class="btn btn-outline-primary" data-min="45" data-focus="1">Focus 45</button>
+    <button class="btn btn-outline-primary" data-min="5" data-focus="0">Break 5</button>
+    <button class="btn btn-outline-primary" data-min="15" data-focus="0">Break 15</button>
+  </div>
+  <div class="ring" id="ring"><div class="ring-in"><div id="display" class="display-4 fw-bold">25:00</div>
+    <div id="label" class="text-muted small">Focus</div></div></div>
+  <select id="course" class="form-select my-4">
+    <option value="">No course</option>
+    {% for c in courses %}<option value="{{ c.id }}">{{ c.code }}</option>{% endfor %}
+  </select>
+  <button id="start" class="btn btn-primary px-4">Start</button>
+  <button id="reset" class="btn btn-outline-secondary">Reset</button>
+  <p id="msg" class="mt-3 mb-0 text-muted"></p>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+let timer = null, total = 25 * 60, focus = true, endAt = 0;
+const $ = id => document.getElementById(id);
+const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+const draw = s => { $('display').textContent = fmt(s); document.title = timer ? fmt(s) + ' - StudyHub' : 'Focus Timer - StudyHub';
+  $('ring').style.setProperty('--p', Math.round((1 - s / total) * 100)); };
+const beep = () => { try { const a = new AudioContext(), o = a.createOscillator(); o.connect(a.destination);
+  o.frequency.value = 880; o.start(); o.stop(a.currentTime + 0.4); } catch (e) {} };
+
+document.querySelectorAll('#modes button').forEach(b => b.onclick = () => {
+  if (timer) return;
+  document.querySelectorAll('#modes button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active'); total = b.dataset.min * 60; focus = b.dataset.focus === '1';
+  $('label').textContent = focus ? 'Focus' : 'Break'; draw(total);
+});
+
+$('start').onclick = () => {
+  if (timer) return;
+  endAt = Date.now() + total * 1000;
+  timer = setInterval(async () => {
+    const left = Math.max(0, Math.round((endAt - Date.now()) / 1000));
+    draw(left);
+    if (left > 0) return;
+    clearInterval(timer); timer = null; beep();
+    if (!focus) { $('msg').textContent = 'Break over - ready for another round?'; return; }
+    const res = await fetch('/api/sessions', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]').content},
+      body: JSON.stringify({minutes: total / 60, course_id: $('course').value || null})
+    });
+    $('msg').textContent = res.ok ? 'Session logged to your streak. Take a break!' : 'Could not save session.';
+  }, 500);
+};
+
+$('reset').onclick = () => { clearInterval(timer); timer = null; draw(total); $('msg').textContent = ''; };
+</script>
+{% endblock %}

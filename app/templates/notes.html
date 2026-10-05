@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Notes - StudyHub{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <h4 class="mb-0"><i class="bi bi-sticky"></i> Notes</h4>
+  <form class="d-flex gap-2"><input class="form-control" name="q" value="{{ q }}" placeholder="Search notes...">
+    <button class="btn btn-outline-primary"><i class="bi bi-search"></i></button></form>
+</div>
+<div class="card mb-4"><div class="card-body">
+  <form method="post" class="row g-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-md-7"><input class="form-control" name="title" placeholder="Title (e.g. Unit 3 formulas)" required></div>
+    <div class="col-md-5"><select class="form-select" name="course_id"><option value="">No course</option>
+      {% for c in courses %}<option value="{{ c.id }}">{{ c.code }}</option>{% endfor %}</select></div>
+    <div class="col-12"><textarea class="form-control" name="body" rows="3" placeholder="Write your notes, formulas, key points..." required></textarea></div>
+    <div class="col-12"><button class="btn btn-primary"><i class="bi bi-plus-lg"></i> Save note</button></div>
+  </form>
+</div></div>
+<div class="row g-3">
+  {% for n in notes %}
+  <div class="col-md-6 col-xl-4"><div class="card note-card"><div class="card-body">
+    <div class="d-flex justify-content-between align-items-start">
+      <h6 class="fw-bold">{{ n.title }}</h6>
+      <form method="post" action="{{ url_for('main.delete_note', note_id=n.id) }}" onsubmit="return confirm('Delete this note?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-link text-danger p-0"><i class="bi bi-trash"></i></button></form>
+    </div>
+    <p class="mb-2" style="white-space:pre-wrap">{{ n.body }}</p>
+    <small class="text-muted">{% if n.course %}<span class="badge bg-info text-dark me-1">{{ n.course.code }}</span>{% endif %}{{ n.created_at.strftime('%d %b %Y') }}</small>
+  </div></div></div>
+  {% else %}<p class="text-muted">{{ 'No notes match your search.' if q else 'No notes yet - jot down your first one above.' }}</p>{% endfor %}
+</div>
+{% endblock %}

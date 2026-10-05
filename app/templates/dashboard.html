@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - StudyHub{% endblock %}
+{% macro stat(icon, label, value, tone='') %}
+<div class="col-6 col-lg-3"><div class="card stat"><div class="ico"><i class="bi bi-{{ icon }}"></i></div>
+  <div><div class="text-muted small">{{ label }}</div><div class="val {{ tone }}">{{ value }}</div></div></div></div>
+{% endmacro %}
+{% block content %}
+<div class="hero mb-4">
+  <div><h2 class="mb-1">Hi {{ current_user.name.split()[0] }} 👋</h2><p class="mb-0 opacity-75">{{ quote }}</p></div>
+  <a class="btn btn-light fw-semibold" href="{{ url_for('main.timer') }}"><i class="bi bi-play-fill"></i> Start focus</a>
+</div>
+
+<div class="row g-3 mb-4">
+  {{ stat('award', 'CGPA (10-pt)', cgpa if cgpa is not none else '--') }}
+  {{ stat('fire', 'Study streak', study.streak ~ (' day' if study.streak == 1 else ' days'), 'text-warning') }}
+  {{ stat('exclamation-triangle', 'Overdue tasks', overdue|length, 'text-danger' if overdue) }}
+  {{ stat('check2-circle', 'Tasks completed', done_count, 'text-success') }}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8"><div class="card h-100">
+    <div class="card-header fw-bold">Study time this week
+      <span class="text-muted fw-normal small ms-1">{{ minutes // 60 }}h {{ minutes % 60 }}m total</span></div>
+    <div class="card-body"><canvas id="weekChart" height="110"></canvas></div></div></div>
+  <div class="col-lg-4"><div class="card h-100 text-center">
+    <div class="card-header fw-bold">Today's goal</div>
+    <div class="card-body"><div class="ring" style="--p: {{ study.goal_pct }}"><div class="ring-in">
+      <div class="fs-2 fw-bold">{{ study.today_min }}</div><div class="small text-muted">of {{ study.goal }} min</div></div></div>
+      <p class="small text-muted mt-3 mb-0">{{ 'Goal reached - great work! 🎉' if study.goal_pct >= 100 else 'Keep going, every minute counts.' }}</p>
+    </div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card"><div class="card-header fw-bold">Upcoming deadlines</div>
+      <ul class="list-group list-group-flush">
+        {% for t in overdue %}
+        <li class="list-group-item d-flex justify-content-between">
+          <span>{{ t.title }}</span><span class="badge bg-danger">overdue {{ t.due_date }}</span></li>
+        {% endfor %}
+        {% for t in upcoming %}
+        <li class="list-group-item d-flex justify-content-between">
+          <span>{{ t.title }} <small class="text-muted">{{ t.course.code if t.course }}</small></span>
+          <span class="badge bg-secondary">{{ t.due_date }}</span></li>
+        {% endfor %}
+        {% if not overdue and not upcoming %}<li class="list-group-item text-muted">Nothing pending. 🎉</li>{% endif %}
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card"><div class="card-header fw-bold">Course performance</div>
+      <ul class="list-group list-group-flush">
+        {% for r in rows %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between">
+            <a class="text-decoration-none" href="{{ url_for('main.course_detail', course_id=r.course.id) }}">{{ r.course.code }} - {{ r.course.name }}</a>
+            <span>{{ '%.1f'|format(r.pct) ~ '%' if r.pct is not none else 'no grades' }}</span>
+          </div>
+          <div class="progress mt-1" style="height:6px"><div class="progress-bar" style="width: {{ r.pct or 0 }}%"></div></div>
+        </li>
+        {% else %}<li class="list-group-item text-muted">Add a course to get started.</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('weekChart'), {
+  type: 'bar',
+  data: {labels: {{ study.labels|tojson }}, datasets: [{label: 'Minutes', data: {{ study.series|tojson }},
+    backgroundColor: '#6366f1', borderRadius: 8}]},
+  options: {plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
+});
+</script>
+{% endblock %}

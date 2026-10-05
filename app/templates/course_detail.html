@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<a href="{{ url_for('main.courses') }}">&larr; Courses</a>
+<div class="d-flex justify-content-between align-items-center my-3">
+  <h4 class="mb-0">{{ course.code }} - {{ course.name }} <small class="text-muted">({{ course.credits }} credits)</small></h4>
+  <div class="text-end">
+    <span class="fs-4 fw-bold">{{ '%.1f'|format(pct) ~ '%' if pct is not none else '--' }}</span>
+    {% if points is not none %}<span class="badge bg-primary ms-2">Grade point {{ points }}</span>{% endif %}
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4"><div class="card-header fw-bold">Assessments
+  <small class="text-muted">(weights used: {{ weight_used }}% of 100%)</small></div>
+  <table class="table mb-0">
+    <thead><tr><th>Title</th><th>Score</th><th>Weight</th><th></th></tr></thead>
+    <tbody>
+    {% for a in course.assessments %}
+      <tr><td>{{ a.title }}</td>
+          <td>{{ a.score if a.score is not none else 'not graded' }} / {{ a.max_score }}</td>
+          <td>{{ a.weight }}%</td>
+          <td class="text-end"><form method="post" action="{{ url_for('main.delete_assessment', assessment_id=a.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger">x</button></form></td></tr>
+    {% else %}<tr><td colspan="4" class="text-muted">No assessments yet.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <div class="card-body border-top">
+    <form method="post" action="{{ url_for('main.add_assessment', course_id=course.id) }}" class="row g-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-4"><input class="form-control" name="title" placeholder="Mid-term, Quiz 1..." required></div>
+      <div class="col-md-2"><input class="form-control" name="score" placeholder="Score (blank = pending)"></div>
+      <div class="col-md-2"><input class="form-control" name="max_score" value="100" placeholder="Max"></div>
+      <div class="col-md-2"><input class="form-control" name="weight" placeholder="Weight %" required></div>
+      <div class="col-md-2"><button class="btn btn-primary w-100">Add</button></div>
+    </form>
+  </div>
+</div>
+
+{% if targets %}
+<div class="card mb-4"><div class="card-header fw-bold"><i class="bi bi-bullseye"></i> Target planner
+  <small class="text-muted ms-1">average % you need on your pending assessments</small></div>
+  <div class="card-body row g-3">
+  {% for gp, need in targets %}
+    <div class="col-6 col-md-3"><div class="target text-center">
+      <div class="small text-muted">For grade point {{ gp }}</div>
+      {% if need > 100 %}<div class="fw-bold text-danger">Out of reach</div>
+      {% elif need <= 0 %}<div class="fw-bold text-success">Secured &#10003;</div>
+      {% else %}<div class="fs-4 fw-bold">{{ '%.0f'|format(need) }}%</div>{% endif %}
+    </div></div>
+  {% endfor %}
+  </div></div>
+{% endif %}
+
+<h5>Tasks for this course</h5>
+<ul class="list-group">
+  {% for t in tasks %}
+  <li class="list-group-item d-flex justify-content-between">
+    <span class="{{ 'text-decoration-line-through text-muted' if t.done }}">{{ t.title }}</span>
+    <span class="badge bg-secondary">{{ t.due_date }}</span></li>
+  {% else %}<li class="list-group-item text-muted">No tasks linked to this course.</li>{% endfor %}
+</ul>
+{% endblock %}
